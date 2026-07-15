@@ -1,3 +1,19 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require.resolve\\('lucide-react'\\)\")",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(Object.keys\\(m\\).filter\\(k => /insta/i.test\\(k\\)\\)\\)\")",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(Object.keys\\(m\\).filter\\(k => /^[A-Z]/.test\\(k\\)\\).length\\)\")",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\(Object.keys\\(m\\).filter\\(k => /camera|share|at-sign|hash/i.test\\(k\\)\\)\\)\")",
+      "Bash(node -e \"const m = require\\('lucide-react'\\); console.log\\('AtSign' in m, 'Sparkles' in m, 'Star' in m\\)\")",
+      "Bash(npx eslint *)",
+      "Bash(curl -s -o /dev/null -w \"status=%{http_code}\\\\n\" http://localhost:3000/)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+    ]
+  },
   "enabledPlugins": {}
 }

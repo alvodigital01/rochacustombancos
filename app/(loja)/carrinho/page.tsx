@@ -10,9 +10,12 @@ export default function CarrinhoPage() {
   if (itens.length === 0) {
     return (
       <main className="mx-auto max-w-3xl p-8 text-center">
-        <h1 className="text-2xl font-bold">Seu carrinho está vazio</h1>
-        <p className="mt-2 text-gray-500">Ainda não tem nada por aqui.</p>
-        <Link href="/motos" className="mt-6 inline-block rounded bg-black px-6 py-2 text-white">
+        <h1 className="font-display text-2xl font-bold uppercase">Seu carrinho está vazio</h1>
+        <p className="mt-2 text-muted">Ainda não tem nada por aqui.</p>
+        <Link
+          href="/motos"
+          className="mt-6 inline-block rounded-lg bg-accent px-6 py-2 font-display font-semibold uppercase tracking-wide text-accent-foreground transition hover:bg-accent-hover"
+        >
           Ver motos
         </Link>
       </main>
@@ -21,12 +24,12 @@ export default function CarrinhoPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-bold">Carrinho</h1>
+      <h1 className="font-display text-2xl font-bold uppercase">Carrinho</h1>
 
-      <ul className="mt-6 divide-y">
+      <ul className="mt-6 divide-y divide-border">
         {itens.map((item) => (
           <li key={item.varianteId} className="flex flex-wrap items-center gap-4 py-4">
-            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded border bg-gray-100">
+            <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-surface">
               {item.imagemUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -35,7 +38,7 @@ export default function CarrinhoPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                <div className="flex h-full w-full items-center justify-center text-xs text-muted">
                   Sem imagem
                 </div>
               )}
@@ -43,8 +46,8 @@ export default function CarrinhoPage() {
 
             <div className="flex-1">
               <p className="font-medium">{item.produtoNome}</p>
-              <p className="text-sm text-gray-500">Cor: {item.cor}</p>
-              <p className="text-sm text-gray-500">{formatarPreco(item.precoUnit)} / un</p>
+              <p className="text-sm text-muted">Cor: {item.cor}</p>
+              <p className="text-sm text-muted">{formatarPreco(item.precoUnit)} / un</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -52,7 +55,7 @@ export default function CarrinhoPage() {
                 type="button"
                 onClick={() => alterarQtd(item.varianteId, item.qtd - 1)}
                 disabled={item.qtd <= 1}
-                className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-border px-2 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 -
               </button>
@@ -61,20 +64,20 @@ export default function CarrinhoPage() {
                 type="button"
                 onClick={() => alterarQtd(item.varianteId, item.qtd + 1)}
                 disabled={item.qtd >= item.estoque}
-                className="rounded border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-border px-2 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 +
               </button>
             </div>
 
-            <p className="w-24 text-right font-medium">
+            <p className="w-24 text-right font-mono font-medium">
               {formatarPreco(item.precoUnit * item.qtd)}
             </p>
 
             <button
               type="button"
               onClick={() => removerItem(item.varianteId)}
-              className="text-sm text-red-600 underline"
+              className="text-sm text-danger underline"
             >
               Remover
             </button>
@@ -82,15 +85,21 @@ export default function CarrinhoPage() {
         ))}
       </ul>
 
-      <div className="mt-6 flex items-center justify-between border-t pt-4">
-        <p className="text-lg font-semibold">Subtotal: {formatarPreco(subtotal)}</p>
+      <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+        <p className="font-mono text-lg font-semibold">Subtotal: {formatarPreco(subtotal)}</p>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-4">
-        <Link href="/motos" className="rounded border px-6 py-2">
+        <Link
+          href="/motos"
+          className="rounded-lg border border-accent/50 px-6 py-2 font-display font-semibold uppercase tracking-wide transition hover:border-accent hover:bg-accent/10"
+        >
           Continuar comprando
         </Link>
-        <Link href="/checkout" className="rounded bg-black px-6 py-2 text-white">
+        <Link
+          href="/checkout"
+          className="rounded-lg bg-accent px-6 py-2 font-display font-semibold uppercase tracking-wide text-accent-foreground transition hover:bg-accent-hover"
+        >
           Finalizar compra
         </Link>
       </div>

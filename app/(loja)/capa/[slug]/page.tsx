@@ -77,12 +77,12 @@ export default async function ProdutoPage({
                   key={img.id}
                   src={img.url}
                   alt={produto.nome}
-                  className="aspect-square w-full rounded border object-cover"
+                  className="aspect-square w-full rounded-xl border border-border object-cover"
                 />
               ))}
             </div>
           ) : (
-            <div className="flex aspect-square w-full items-center justify-center rounded border bg-gray-100 text-gray-400">
+            <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-border bg-surface text-muted">
               Sem imagem
             </div>
           )}
@@ -90,13 +90,13 @@ export default async function ProdutoPage({
 
         <div>
           {moto && (
-            <Link href="/motos" className="text-sm text-gray-500 underline">
+            <Link href="/motos" className="text-sm text-muted underline">
               {moto.nome}
             </Link>
           )}
           <h1 className="text-2xl font-bold">{produto.nome}</h1>
-          <p className="mt-2 text-gray-600">{produto.descricao}</p>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-muted">{produto.descricao}</p>
+          <p className="mt-2 text-sm text-muted">
             Preço base: {formatarPreco(Number(produto.preco))}
           </p>
 
@@ -108,9 +108,9 @@ export default async function ProdutoPage({
             produtoPesoG={produto.peso_g ?? null}
           />
 
-          <div className="mt-8 rounded border p-4">
+          <div className="mt-8 rounded-xl border border-border bg-surface p-4">
             <p className="font-medium">Você mesmo instala em minutos</p>
-            <Link href="/como-instalar" className="text-blue-600 underline">
+            <Link href="/como-instalar" className="text-accent underline">
               Ver como instalar
             </Link>
           </div>

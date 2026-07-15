@@ -36,27 +36,27 @@ export default async function MotosPage() {
       <h1 className="text-2xl font-bold">Escolha sua moto</h1>
 
       {error && (
-        <p className="mt-4 text-red-600">
+        <p className="mt-4 text-danger">
           Erro ao conectar no Supabase: {error.message}
         </p>
       )}
 
       {!error && motos.length === 0 && (
-        <p className="mt-4 text-gray-500">Nenhuma moto cadastrada ainda.</p>
+        <p className="mt-4 text-muted">Nenhuma moto cadastrada ainda.</p>
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {motos.map((moto) => {
           const produto = produtoPorMoto.get(moto.id);
           return (
-            <div key={moto.id} className="rounded border p-4">
+            <div key={moto.id} className="rounded-xl border border-border bg-surface p-4">
               <p className="font-medium">{moto.nome}</p>
               {produto ? (
-                <Link href={`/capa/${produto.slug}`} className="mt-2 inline-block text-blue-600 underline">
+                <Link href={`/capa/${produto.slug}`} className="mt-2 inline-block text-accent underline">
                   Ver capa
                 </Link>
               ) : (
-                <p className="mt-2 text-gray-500">Em breve</p>
+                <p className="mt-2 text-muted">Em breve</p>
               )}
             </div>
           );

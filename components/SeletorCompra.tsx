@@ -62,23 +62,25 @@ export default function SeletorCompra({
   }
 
   if (variantes.length === 0) {
-    return <p className="text-gray-500">Nenhuma variante disponível no momento.</p>;
+    return <p className="text-muted">Nenhuma variante disponível no momento.</p>;
   }
 
   return (
     <div className="mt-4 space-y-4">
-      <p className="text-xl font-semibold">{formatarPreco(preco)}</p>
+      <p className="font-mono text-xl font-semibold text-accent">{formatarPreco(preco)}</p>
 
       <div>
-        <p className="mb-2 text-sm font-medium">Cor</p>
+        <p className="mb-2 text-sm font-medium text-muted">Cor</p>
         <div className="flex flex-wrap gap-2">
           {variantes.map((v) => (
             <button
               key={v.id}
               type="button"
               onClick={() => selecionarVariante(v.id)}
-              className={`rounded border px-3 py-1 text-sm ${
-                v.id === varianteId ? "border-black bg-black text-white" : "border-gray-300"
+              className={`rounded-lg border px-3 py-1 text-sm transition ${
+                v.id === varianteId
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border hover:border-accent/50"
               } ${v.estoque <= 0 ? "opacity-50" : ""}`}
             >
               {v.cor}
@@ -89,13 +91,13 @@ export default function SeletorCompra({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium">Quantidade</p>
+        <p className="mb-2 text-sm font-medium text-muted">Quantidade</p>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
             disabled={quantidade <= 1}
-            className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-border px-3 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             -
           </button>
@@ -106,14 +108,14 @@ export default function SeletorCompra({
               setQuantidade((q) => (variante ? Math.min(variante.estoque, q + 1) : q))
             }
             disabled={!variante || quantidade >= variante.estoque}
-            className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-border px-3 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             +
           </button>
         </div>
       </div>
 
-      <p className={esgotado ? "text-red-600" : "text-green-700"}>
+      <p className={esgotado ? "text-danger" : "text-emerald-400"}>
         {esgotado ? "Esgotado" : `Em estoque (${variante?.estoque})`}
       </p>
 
@@ -121,12 +123,12 @@ export default function SeletorCompra({
         type="button"
         onClick={adicionarAoCarrinho}
         disabled={esgotado}
-        className="rounded bg-black px-6 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-lg bg-accent px-6 py-2 font-display font-semibold uppercase tracking-wide text-accent-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         Adicionar ao carrinho
       </button>
 
-      {aviso && <p className="text-sm text-gray-700">{aviso}</p>}
+      {aviso && <p className="text-sm text-muted">{aviso}</p>}
     </div>
   );
 }

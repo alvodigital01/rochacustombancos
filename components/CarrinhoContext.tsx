@@ -62,8 +62,13 @@ function getSnapshot() {
   return itensAtuais;
 }
 
+// Precisa ser uma referência estável: useSyncExternalStore assume que o
+// snapshot mudou sempre que a referência retornada é diferente da anterior,
+// e um array novo a cada chamada causa um loop de re-render na hidratação.
+const SNAPSHOT_SERVIDOR: ItemCarrinho[] = [];
+
 function getServerSnapshot(): ItemCarrinho[] {
-  return [];
+  return SNAPSHOT_SERVIDOR;
 }
 
 function adicionarItemStore(item: ItemCarrinho) {
