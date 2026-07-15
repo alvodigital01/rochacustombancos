@@ -1,15 +1,9 @@
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase";
 import { formatarPreco } from "@/lib/format";
+import StatusPedido from "@/components/StatusPedido";
 
 export const dynamic = "force-dynamic";
-
-const MENSAGENS_STATUS: Record<string, string> = {
-  aguardando_pagamento: "Estamos aguardando a confirmação do seu pagamento.",
-  aprovado: "Pagamento aprovado! Seu pedido já está sendo preparado.",
-  cancelado: "Este pedido foi cancelado.",
-  recusado: "O pagamento não foi aprovado. Tente novamente ou entre em contato.",
-};
 
 async function getPedido(numero: string) {
   const supabase = supabaseServer();
@@ -58,15 +52,23 @@ export default async function PedidoPage({
   if (!dados) notFound();
 
   const { pedido, itens } = dados;
-  const mensagem = MENSAGENS_STATUS[pedido.status] ?? `Status do pedido: ${pedido.status}`;
 
   return (
     <main className="min-h-screen bg-black p-4 pb-24 text-white sm:p-8">
       <div className="mx-auto max-w-2xl">
         <h1 className="text-2xl font-bold">Pedido {pedido.numero}</h1>
-        <p className="mt-2 rounded border border-yellow-500/30 bg-yellow-400/10 px-4 py-3 text-yellow-200">
-          {mensagem}
-        </p>
+        <StatusPedido numero={pedido.numero} statusInicial={pedido.status} />
+
+        {(pedido.status === "enviado" || pedido.status === "entregue") && pedido.codigo_rastreio && (
+          <section className="mt-4 rounded border border-white/10 bg-white/5 p-4">
+            <h2 className="mb-2 font-semibold text-yellow-400">Rastreio</h2>
+            <p className="text-sm text-gray-300">
+              {pedido.transportadora ? `${pedido.transportadora} — ` : ""}
+              {pedido.codigo_rastreio}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">Rastreio automático chega em breve.</p>
+          </section>
+        )}
 
         <section className="mt-6 rounded border border-white/10 bg-white/5 p-4">
           <h2 className="mb-4 font-semibold text-yellow-400">Itens</h2>

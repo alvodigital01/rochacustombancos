@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { MercadoPagoConfig, Payment, Preference } from "mercadopago";
 
 export const mercadoPagoClient = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN!,
@@ -32,6 +32,7 @@ export async function criarPreferencia({
   backUrls,
   notificationUrl,
 }: CriarPreferenciaParams) {
+  const ambienteTeste = process.env.MP_ACCESS_TOKEN?.startsWith("TEST-") ?? false;
   const items = itens.map((item, indice) => ({
     id: `item-${indice}`,
     title: item.titulo,
@@ -53,10 +54,17 @@ export async function criarPreferencia({
   const preferencia = await new Preference(mercadoPagoClient).create({
     body: {
       items,
-      payer: {
-        name: pedido.clienteNome,
-        email: pedido.clienteEmail,
-      },
+      // No sandbox, o comprador entra com a conta Buyer Test User na tela
+      // do Mercado Pago. Pré-associar um e-mail comum pode ser bloqueado
+      // pelo PolicyAgent antes mesmo de abrir o checkout.
+      ...(ambienteTeste
+        ? {}
+        : {
+            payer: {
+              name: pedido.clienteNome,
+              email: pedido.clienteEmail,
+            },
+          }),
       external_reference: pedido.numero,
       back_urls: backUrls,
       auto_return: "approved",
@@ -66,6 +74,12 @@ export async function criarPreferencia({
 
   return {
     preferenceId: preferencia.id ?? null,
-    initPoint: preferencia.init_point ?? preferencia.sandbox_init_point ?? null,
+    initPoint: ambienteTeste
+      ? (preferencia.sandbox_init_point ?? null)
+      : (preferencia.init_point ?? null),
   };
+}
+
+export async function buscarPagamento(paymentId: string) {
+  return new Payment(mercadoPagoClient).get({ id: paymentId });
 }

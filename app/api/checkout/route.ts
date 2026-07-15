@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { supabaseServer } from "@/lib/supabase";
 import { calcularFrete } from "@/lib/frete";
 import { criarPreferencia } from "@/lib/mercadopago";
@@ -107,7 +108,10 @@ export async function POST(request: Request) {
     }
 
     const total = subtotal + frete.valor;
-    const numero = `RC-${Date.now().toString(36).toUpperCase()}`;
+    // Sem sistema de contas, o número do pedido funciona como credencial de
+    // acesso ao /pedido/{numero} (quem tem o link, vê o pedido). Por isso
+    // precisa ser imprevisível — CSPRNG, não derivado de timestamp.
+    const numero = `RC-${randomBytes(8).toString("hex").toUpperCase()}`;
 
     const { data: pedido, error: erroPedido } = await supabase
       .from("pedidos")
