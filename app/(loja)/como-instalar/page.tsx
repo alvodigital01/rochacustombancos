@@ -81,15 +81,24 @@ export default function ComoInstalarPage() {
         <Container>
           <div className="grid gap-10 sm:grid-cols-3 sm:gap-8">
             {PASSOS.map(({ Icone, numero, titulo, descricao }) => (
-              <div key={numero} className="rounded-2xl border border-border bg-surface p-6">
-                <div className="flex items-center gap-3">
+              <div
+                key={numero}
+                className="relative overflow-hidden rounded-2xl border border-border bg-surface p-6"
+              >
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -right-2 -top-6 select-none font-display text-8xl font-bold text-white/[0.04]"
+                >
+                  {numero}
+                </span>
+
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-accent/30 bg-accent/10">
                   <Icone className="h-6 w-6 text-accent" aria-hidden />
-                  <span className="font-mono text-sm text-accent">{numero}</span>
                 </div>
-                <p className="mt-4 font-display text-lg font-semibold uppercase tracking-wide">
+                <p className="relative mt-4 font-display text-lg font-semibold uppercase tracking-wide">
                   {titulo}
                 </p>
-                <p className="mt-2 text-sm text-muted">{descricao}</p>
+                <p className="relative mt-2 text-sm text-muted">{descricao}</p>
               </div>
             ))}
           </div>

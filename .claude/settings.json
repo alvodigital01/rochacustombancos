@@ -15,7 +15,8 @@
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "Bash(curl -s -o /dev/null -w \"status=%{http_code}\\\\n\" http://localhost:3000/motos)",
       "mcp__plugin_playwright_playwright__browser_close",
-      "Bash(identify \"c:\\\\Users\\\\nicolas\\\\Documents\\\\GitHub\\\\rochacustombancos\\\\app\\\\favicon.ico\")"
+      "Bash(identify \"c:\\\\Users\\\\nicolas\\\\Documents\\\\GitHub\\\\rochacustombancos\\\\app\\\\favicon.ico\")",
+      "Bash(node -e ' *)"
     ]
   },
   "enabledPlugins": {}

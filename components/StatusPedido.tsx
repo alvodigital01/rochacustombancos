@@ -1,14 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CheckCircle2, Clock, PackageCheck, Truck, XCircle } from "lucide-react";
+import { cn } from "@/lib/cn";
 
-const MENSAGENS_STATUS: Record<string, string> = {
-  aguardando_pagamento: "Estamos aguardando a confirmação do seu pagamento.",
-  pago: "Pagamento aprovado! Seu pedido já está sendo preparado.",
-  enviado: "Seu pedido foi enviado!",
-  entregue: "Seu pedido foi entregue.",
-  cancelado: "Este pedido foi cancelado.",
-  rejected: "O pagamento não foi aprovado. Tente novamente ou entre em contato.",
+const STATUS_CONFIG: Record<
+  string,
+  { mensagem: string; Icone: typeof Clock; className: string }
+> = {
+  aguardando_pagamento: {
+    mensagem: "Estamos aguardando a confirmação do seu pagamento.",
+    Icone: Clock,
+    className: "border-accent/30 bg-accent/10 text-accent",
+  },
+  pago: {
+    mensagem: "Pagamento aprovado! Seu pedido já está sendo preparado.",
+    Icone: CheckCircle2,
+    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  },
+  enviado: {
+    mensagem: "Seu pedido foi enviado!",
+    Icone: Truck,
+    className: "border-blue-500/30 bg-blue-500/10 text-blue-400",
+  },
+  entregue: {
+    mensagem: "Seu pedido foi entregue.",
+    Icone: PackageCheck,
+    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  },
+  cancelado: {
+    mensagem: "Este pedido foi cancelado.",
+    Icone: XCircle,
+    className: "border-danger/30 bg-danger/10 text-danger",
+  },
+  rejected: {
+    mensagem: "O pagamento não foi aprovado. Tente novamente ou entre em contato.",
+    Icone: XCircle,
+    className: "border-danger/30 bg-danger/10 text-danger",
+  },
 };
 
 export default function StatusPedido({
@@ -39,11 +68,19 @@ export default function StatusPedido({
     return () => clearInterval(intervalo);
   }, [status, numero]);
 
-  const mensagem = MENSAGENS_STATUS[status] ?? `Status do pedido: ${status}`;
+  const config = STATUS_CONFIG[status] ?? {
+    mensagem: `Status do pedido: ${status}`,
+    Icone: Clock,
+    className: "border-border bg-surface text-muted",
+  };
+  const Icone = config.Icone;
 
   return (
-    <p className="mt-2 rounded border border-yellow-500/30 bg-yellow-400/10 px-4 py-3 text-yellow-200">
-      {mensagem}
-    </p>
+    <div className={cn("mt-4 flex items-center gap-3 rounded-2xl border p-4", config.className)}>
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-bg/40">
+        <Icone className="h-5 w-5" aria-hidden />
+      </div>
+      <p className="font-medium">{config.mensagem}</p>
+    </div>
   );
 }

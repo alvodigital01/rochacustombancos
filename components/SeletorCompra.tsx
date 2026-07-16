@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CheckCircle2, PackageCheck, Truck, Wrench, XCircle } from "lucide-react";
 import { formatarPreco } from "@/lib/format";
 import { useCarrinho } from "@/components/CarrinhoContext";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type Variante = {
   id: string;
@@ -62,73 +66,129 @@ export default function SeletorCompra({
   }
 
   if (variantes.length === 0) {
-    return <p className="text-muted">Nenhuma variante disponível no momento.</p>;
+    return <p className="mt-6 text-muted">Nenhuma variante disponível no momento.</p>;
   }
 
   return (
-    <div className="mt-4 space-y-4">
-      <p className="font-mono text-xl font-semibold text-accent">{formatarPreco(preco)}</p>
+    <div className="mt-6 space-y-6">
+      <p className="font-mono text-3xl font-bold text-accent">{formatarPreco(preco)}</p>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-muted">Cor</p>
+        <p className="mb-3 text-sm font-medium text-muted">Cor</p>
         <div className="flex flex-wrap gap-2">
           {variantes.map((v) => (
             <button
               key={v.id}
               type="button"
               onClick={() => selecionarVariante(v.id)}
-              className={`rounded-lg border px-3 py-1 text-sm transition ${
+              disabled={v.estoque <= 0}
+              className={cn(
+                "rounded-xl border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
                 v.id === varianteId
                   ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border hover:border-accent/50"
-              } ${v.estoque <= 0 ? "opacity-50" : ""}`}
+                  : "border-border hover:border-accent/50",
+                v.estoque <= 0 && "cursor-not-allowed opacity-40"
+              )}
             >
               {v.cor}
-              {v.estoque <= 0 ? " (esgotado)" : ""}
+              {v.estoque <= 0 ? " · esgotado" : ""}
             </button>
           ))}
         </div>
       </div>
 
-      <div>
-        <p className="mb-2 text-sm font-medium text-muted">Quantidade</p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
-            disabled={quantidade <= 1}
-            className="rounded-lg border border-border px-3 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            -
-          </button>
-          <span>{quantidade}</span>
-          <button
-            type="button"
-            onClick={() =>
-              setQuantidade((q) => (variante ? Math.min(variante.estoque, q + 1) : q))
-            }
-            disabled={!variante || quantidade >= variante.estoque}
-            className="rounded-lg border border-border px-3 py-1 transition hover:border-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            +
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="mb-2 text-sm font-medium text-muted">Quantidade</p>
+          <div className="inline-flex items-center gap-4 rounded-full border border-border px-1.5 py-1.5">
+            <button
+              type="button"
+              onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
+              disabled={quantidade <= 1}
+              aria-label="Diminuir quantidade"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              −
+            </button>
+            <span className="w-4 text-center font-mono text-sm">{quantidade}</span>
+            <button
+              type="button"
+              onClick={() =>
+                setQuantidade((q) => (variante ? Math.min(variante.estoque, q + 1) : q))
+              }
+              disabled={!variante || quantidade >= variante.estoque}
+              aria-label="Aumentar quantidade"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 text-sm font-medium",
+            esgotado ? "text-danger" : "text-emerald-400"
+          )}
+        >
+          {esgotado ? (
+            <XCircle className="h-4 w-4" aria-hidden />
+          ) : (
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+          )}
+          {esgotado ? "Esgotado" : `Em estoque (${variante?.estoque})`}
         </div>
       </div>
 
-      <p className={esgotado ? "text-danger" : "text-emerald-400"}>
-        {esgotado ? "Esgotado" : `Em estoque (${variante?.estoque})`}
-      </p>
+      {/* Só no desktop — no mobile o CTA fica na barra fixa abaixo. */}
+      <div className="hidden sm:block">
+        <Button
+          type="button"
+          onClick={adicionarAoCarrinho}
+          disabled={esgotado}
+          size="lg"
+        >
+          {aviso ? (
+            <>
+              <CheckCircle2 className="h-5 w-5" aria-hidden /> Adicionado!
+            </>
+          ) : (
+            "Adicionar ao carrinho"
+          )}
+        </Button>
+      </div>
 
-      <button
-        type="button"
-        onClick={adicionarAoCarrinho}
-        disabled={esgotado}
-        className="rounded-lg bg-accent px-6 py-2 font-display font-semibold uppercase tracking-wide text-accent-foreground transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Adicionar ao carrinho
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <Badge>
+          <PackageCheck className="h-3.5 w-3.5" aria-hidden /> Pronta entrega
+        </Badge>
+        <Badge>
+          <Truck className="h-3.5 w-3.5" aria-hidden /> Envio Brasil
+        </Badge>
+        <Badge>
+          <Wrench className="h-3.5 w-3.5" aria-hidden /> Você instala
+        </Badge>
+      </div>
 
-      {aviso && <p className="text-sm text-muted">{aviso}</p>}
+      {/* Barra fixa só no mobile — no desktop o CTA acima já fica visível. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-border bg-bg/95 p-4 backdrop-blur-md sm:hidden">
+        <p className="font-mono text-lg font-bold text-accent">{formatarPreco(preco)}</p>
+        <Button
+          type="button"
+          onClick={adicionarAoCarrinho}
+          disabled={esgotado}
+          className="flex-1"
+        >
+          {aviso ? (
+            <>
+              <CheckCircle2 className="h-4 w-4" aria-hidden /> Adicionado!
+            </>
+          ) : (
+            "Adicionar ao carrinho"
+          )}
+        </Button>
+      </div>
+      <div className="h-20 sm:hidden" aria-hidden />
     </div>
   );
 }

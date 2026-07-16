@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
+import { Truck } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase";
 import { formatarPreco } from "@/lib/format";
 import StatusPedido from "@/components/StatusPedido";
+import Container from "@/components/ui/Container";
+import Section from "@/components/ui/Section";
 
 export const dynamic = "force-dynamic";
 
@@ -54,51 +57,62 @@ export default async function PedidoPage({
   const { pedido, itens } = dados;
 
   return (
-    <main className="min-h-screen bg-black p-4 pb-24 text-white sm:p-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-bold">Pedido {pedido.numero}</h1>
+    <Section className="pb-16 pt-10 sm:pb-20 sm:pt-14">
+      <Container className="max-w-2xl">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted">Pedido</p>
+        <h1 className="mt-1 font-display text-2xl font-bold uppercase sm:text-3xl">
+          {pedido.numero}
+        </h1>
+
         <StatusPedido numero={pedido.numero} statusInicial={pedido.status} />
 
         {(pedido.status === "enviado" || pedido.status === "entregue") && pedido.codigo_rastreio && (
-          <section className="mt-4 rounded border border-white/10 bg-white/5 p-4">
-            <h2 className="mb-2 font-semibold text-yellow-400">Rastreio</h2>
-            <p className="text-sm text-gray-300">
-              {pedido.transportadora ? `${pedido.transportadora} — ` : ""}
-              {pedido.codigo_rastreio}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">Rastreio automático chega em breve.</p>
+          <section className="mt-4 flex items-start gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+            <Truck className="h-5 w-5 flex-shrink-0 text-blue-400" aria-hidden />
+            <div>
+              <p className="font-display text-sm font-semibold uppercase tracking-wide">Rastreio</p>
+              <p className="mt-1 text-sm">
+                {pedido.transportadora ? `${pedido.transportadora} — ` : ""}
+                <span className="font-mono">{pedido.codigo_rastreio}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted">Rastreio automático chega em breve.</p>
+            </div>
           </section>
         )}
 
-        <section className="mt-6 rounded border border-white/10 bg-white/5 p-4">
-          <h2 className="mb-4 font-semibold text-yellow-400">Itens</h2>
+        <section className="mt-6 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+          <h2 className="mb-4 font-display text-sm font-semibold uppercase tracking-wide text-accent">
+            Itens
+          </h2>
           <ul className="space-y-2 text-sm">
             {itens.map((item) => (
               <li key={item.id} className="flex justify-between gap-2">
-                <span className="text-gray-300">
+                <span className="text-muted">
                   {item.nome} ({item.cor}) x{item.qtd}
                 </span>
-                <span className="whitespace-nowrap">{formatarPreco(item.precoUnit * item.qtd)}</span>
+                <span className="whitespace-nowrap font-mono">
+                  {formatarPreco(item.precoUnit * item.qtd)}
+                </span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-4 space-y-1 border-t border-white/10 pt-4 text-sm">
-            <div className="flex justify-between text-gray-300">
+          <div className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+            <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span>{formatarPreco(Number(pedido.subtotal))}</span>
+              <span className="font-mono">{formatarPreco(Number(pedido.subtotal))}</span>
             </div>
-            <div className="flex justify-between text-gray-300">
+            <div className="flex justify-between text-muted">
               <span>Frete{pedido.frete_servico ? ` (${pedido.frete_servico})` : ""}</span>
-              <span>{formatarPreco(Number(pedido.frete_valor))}</span>
+              <span className="font-mono">{formatarPreco(Number(pedido.frete_valor))}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold text-white">
+            <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
-              <span>{formatarPreco(Number(pedido.total))}</span>
+              <span className="font-mono text-accent">{formatarPreco(Number(pedido.total))}</span>
             </div>
           </div>
         </section>
-      </div>
-    </main>
+      </Container>
+    </Section>
   );
 }
