@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ShieldCheck, ShoppingCart } from "lucide-react";
 import { useCarrinho } from "@/components/CarrinhoContext";
 import { formatarPreco, formatarCPF, formatarTelefone } from "@/lib/format";
-import { buscarEndereco, type Endereco } from "@/lib/cep";
+import { validarCPF, validarEmail, validarTelefone } from "@/lib/validacao";
+import { buscarEndereco, type Endereco, type ResultadoBuscaCep } from "@/lib/cep";
 import { calcularFrete } from "@/lib/frete";
 import Button from "@/components/ui/Button";
 import Container from "@/components/ui/Container";
@@ -16,13 +17,24 @@ const PESO_FALLBACK_G = 450;
 const inputClass =
   "w-full rounded-lg border border-border bg-bg/60 px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition";
 
-function Campo({ label, children }: { label: string; children: ReactNode }) {
+const inputComErroClass = "border-danger focus:border-danger focus:ring-danger";
+
+function Campo({
+  label,
+  erro,
+  children,
+}: {
+  label: string;
+  erro?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </span>
       {children}
+      {erro && <span className="mt-1 block text-xs text-danger">{erro}</span>}
     </label>
   );
 }
@@ -58,17 +70,25 @@ export default function CheckoutPage() {
   const [cep, setCep] = useState("");
   const [numero, setNumero] = useState("");
   const [complemento, setComplemento] = useState("");
+  const [enderecoManual, setEnderecoManual] = useState({
+    logradouro: "",
+    bairro: "",
+    cidade: "",
+    uf: "",
+  });
   const [freteId, setFreteId] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [processando, setProcessando] = useState(false);
+  const [erros, setErros] = useState<Record<string, string>>({});
 
   // Só o resultado bruto da busca do CEP vira estado (setado de forma
   // assíncrona, dentro do .then). Tudo o mais — endereço, status, opções de
   // frete — é derivado dele a cada render, então trocar o CEP não exige
   // nenhum reset manual de estado.
-  const [resultadoCep, setResultadoCep] = useState<{ cep: string; endereco: Endereco | null } | null>(
-    null
-  );
+  const [resultadoCep, setResultadoCep] = useState<{
+    cep: string;
+    resultado: ResultadoBuscaCep;
+  } | null>(null);
 
   const pesoTotalG = useMemo(
     () => itens.reduce((soma, item) => soma + (item.pesoG ?? PESO_FALLBACK_G) * item.qtd, 0),
@@ -77,10 +97,14 @@ export default function CheckoutPage() {
 
   const cepLimpo = cep.replace(/\D/g, "");
   const cepValido = cepLimpo.length === 8;
-  const resultadoAtual = resultadoCep?.cep === cepLimpo ? resultadoCep : null;
+  const resultadoAtual = resultadoCep?.cep === cepLimpo ? resultadoCep.resultado : null;
   const buscandoCep = cepValido && !resultadoAtual;
-  const cepComErro = resultadoAtual !== null && resultadoAtual.endereco === null;
-  const endereco = resultadoAtual?.endereco ?? null;
+  const cepNaoEncontrado = resultadoAtual?.encontrado === false && resultadoAtual.motivo === "nao_encontrado";
+  const cepIndisponivel = resultadoAtual?.encontrado === false && resultadoAtual.motivo === "indisponivel";
+  const enderecoAutomatico: Endereco | null = resultadoAtual?.encontrado ? resultadoAtual.endereco : null;
+  // Se o ViaCEP caiu, deixa o cliente preencher o endereço na mão em vez de
+  // travar a compra por causa de um serviço externo fora do ar.
+  const enderecoEfetivo: Endereco | null = enderecoAutomatico ?? (cepIndisponivel ? enderecoManual : null);
 
   useEffect(() => {
     if (!cepValido) return;
@@ -89,7 +113,7 @@ export default function CheckoutPage() {
 
     buscarEndereco(cepLimpo).then((resultado) => {
       if (cancelado) return;
-      setResultadoCep({ cep: cepLimpo, endereco: resultado });
+      setResultadoCep({ cep: cepLimpo, resultado });
     });
 
     return () => {
@@ -97,26 +121,42 @@ export default function CheckoutPage() {
     };
   }, [cepValido, cepLimpo]);
 
+  const temEndereco = !!enderecoEfetivo;
   const opcoesFrete = useMemo(
-    () => (endereco ? calcularFrete(cepLimpo, pesoTotalG, subtotal) : []),
-    [endereco, cepLimpo, pesoTotalG, subtotal]
+    () => (temEndereco ? calcularFrete(cepLimpo, pesoTotalG, subtotal) : []),
+    [temEndereco, cepLimpo, pesoTotalG, subtotal]
   );
 
   const frete = opcoesFrete.find((o) => o.id === freteId) ?? opcoesFrete[0] ?? null;
   const total = subtotal + (frete?.valor ?? 0);
 
-  const formularioCompleto =
-    nome.trim().length > 0 &&
-    email.trim().length > 0 &&
-    cpf.replace(/\D/g, "").length === 11 &&
-    telefone.replace(/\D/g, "").length >= 10 &&
-    !!endereco &&
-    numero.trim().length > 0 &&
-    !!frete;
+  function validarCampos() {
+    const novosErros: Record<string, string> = {};
+
+    if (!nome.trim()) novosErros.nome = "Informe seu nome completo.";
+    if (!validarEmail(email)) novosErros.email = "E-mail inválido.";
+    if (!validarCPF(cpf)) novosErros.cpf = "CPF inválido.";
+    if (!validarTelefone(telefone)) novosErros.telefone = "Telefone inválido.";
+
+    if (!enderecoEfetivo) {
+      novosErros.cep = cepValido ? "Confirme o CEP antes de continuar." : "Informe um CEP válido.";
+    } else {
+      if (!enderecoEfetivo.logradouro.trim()) novosErros.logradouro = "Informe o logradouro.";
+      if (!enderecoEfetivo.cidade.trim()) novosErros.cidade = "Informe a cidade.";
+      if (!enderecoEfetivo.uf.trim()) novosErros.uf = "Informe a UF.";
+    }
+
+    if (!numero.trim()) novosErros.numero = "Informe o número.";
+
+    return novosErros;
+  }
 
   async function irParaPagamento() {
-    if (!formularioCompleto || !endereco || !frete) {
-      setAviso("Preencha todos os campos e escolha o frete antes de continuar.");
+    const novosErros = validarCampos();
+    setErros(novosErros);
+
+    if (Object.keys(novosErros).length > 0 || !enderecoEfetivo || !frete) {
+      setAviso("Confira os campos destacados antes de continuar.");
       return;
     }
 
@@ -132,10 +172,10 @@ export default function CheckoutPage() {
           cliente: { nome, email, cpf, telefone },
           endereco: {
             cep: cepLimpo,
-            logradouro: endereco.logradouro,
-            bairro: endereco.bairro,
-            cidade: endereco.cidade,
-            uf: endereco.uf,
+            logradouro: enderecoEfetivo.logradouro,
+            bairro: enderecoEfetivo.bairro,
+            cidade: enderecoEfetivo.cidade,
+            uf: enderecoEfetivo.uf,
             numero,
             complemento,
           },
@@ -185,34 +225,38 @@ export default function CheckoutPage() {
           <div className="space-y-4 lg:order-1">
             <Etapa numero="01" titulo="Seus dados">
               <div className="space-y-3">
-                <Campo label="Nome completo">
-                  <input value={nome} onChange={(e) => setNome(e.target.value)} className={inputClass} />
+                <Campo label="Nome completo" erro={erros.nome}>
+                  <input
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    className={cn(inputClass, erros.nome && inputComErroClass)}
+                  />
                 </Campo>
-                <Campo label="E-mail">
+                <Campo label="E-mail" erro={erros.email}>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={inputClass}
+                    className={cn(inputClass, erros.email && inputComErroClass)}
                   />
                 </Campo>
                 <div className="grid grid-cols-2 gap-3">
-                  <Campo label="CPF">
+                  <Campo label="CPF" erro={erros.cpf}>
                     <input
                       value={cpf}
                       onChange={(e) => setCpf(formatarCPF(e.target.value))}
                       placeholder="000.000.000-00"
                       inputMode="numeric"
-                      className={inputClass}
+                      className={cn(inputClass, erros.cpf && inputComErroClass)}
                     />
                   </Campo>
-                  <Campo label="Telefone">
+                  <Campo label="Telefone" erro={erros.telefone}>
                     <input
                       value={telefone}
                       onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
                       placeholder="(00) 00000-0000"
                       inputMode="numeric"
-                      className={inputClass}
+                      className={cn(inputClass, erros.telefone && inputComErroClass)}
                     />
                   </Campo>
                 </div>
@@ -228,53 +272,125 @@ export default function CheckoutPage() {
                     placeholder="00000-000"
                     inputMode="numeric"
                     maxLength={9}
-                    className={inputClass}
+                    className={cn(inputClass, erros.cep && inputComErroClass)}
                   />
-                  {buscandoCep && (
-                    <p className="mt-1 text-xs text-muted">Buscando endereço...</p>
+                  {buscandoCep && <p className="mt-1 text-xs text-muted">Buscando endereço...</p>}
+                  {cepNaoEncontrado && (
+                    <p className="mt-1 text-xs text-danger">CEP não encontrado, confira o número.</p>
                   )}
-                  {cepComErro && (
-                    <p className="mt-1 text-xs text-danger">
-                      CEP não encontrado. Confira e tente de novo.
+                  {cepIndisponivel && (
+                    <p className="mt-1 text-xs text-accent">
+                      Não conseguimos consultar o CEP agora. Preencha o endereço manualmente abaixo.
                     </p>
+                  )}
+                  {erros.cep && !buscandoCep && !cepNaoEncontrado && !cepIndisponivel && (
+                    <p className="mt-1 text-xs text-danger">{erros.cep}</p>
                   )}
                 </Campo>
 
-                {endereco && (
+                {enderecoAutomatico && (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <Campo label="Logradouro">
-                        <input value={endereco.logradouro} readOnly className={cn(inputClass, "opacity-70")} />
+                        <input
+                          value={enderecoAutomatico.logradouro}
+                          readOnly
+                          className={cn(inputClass, "opacity-70")}
+                        />
                       </Campo>
                       <Campo label="Bairro">
-                        <input value={endereco.bairro} readOnly className={cn(inputClass, "opacity-70")} />
+                        <input
+                          value={enderecoAutomatico.bairro}
+                          readOnly
+                          className={cn(inputClass, "opacity-70")}
+                        />
                       </Campo>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Campo label="Cidade">
-                        <input value={endereco.cidade} readOnly className={cn(inputClass, "opacity-70")} />
-                      </Campo>
-                      <Campo label="UF">
-                        <input value={endereco.uf} readOnly className={cn(inputClass, "opacity-70")} />
-                      </Campo>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Campo label="Número">
                         <input
-                          value={numero}
-                          onChange={(e) => setNumero(e.target.value)}
-                          className={inputClass}
+                          value={enderecoAutomatico.cidade}
+                          readOnly
+                          className={cn(inputClass, "opacity-70")}
                         />
                       </Campo>
-                      <Campo label="Complemento (opcional)">
+                      <Campo label="UF">
                         <input
-                          value={complemento}
-                          onChange={(e) => setComplemento(e.target.value)}
-                          className={inputClass}
+                          value={enderecoAutomatico.uf}
+                          readOnly
+                          className={cn(inputClass, "opacity-70")}
                         />
                       </Campo>
                     </div>
                   </>
+                )}
+
+                {cepIndisponivel && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Campo label="Logradouro" erro={erros.logradouro}>
+                        <input
+                          value={enderecoManual.logradouro}
+                          onChange={(e) =>
+                            setEnderecoManual((prev) => ({ ...prev, logradouro: e.target.value }))
+                          }
+                          className={cn(inputClass, erros.logradouro && inputComErroClass)}
+                        />
+                      </Campo>
+                      <Campo label="Bairro">
+                        <input
+                          value={enderecoManual.bairro}
+                          onChange={(e) =>
+                            setEnderecoManual((prev) => ({ ...prev, bairro: e.target.value }))
+                          }
+                          className={inputClass}
+                        />
+                      </Campo>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Campo label="Cidade" erro={erros.cidade}>
+                        <input
+                          value={enderecoManual.cidade}
+                          onChange={(e) =>
+                            setEnderecoManual((prev) => ({ ...prev, cidade: e.target.value }))
+                          }
+                          className={cn(inputClass, erros.cidade && inputComErroClass)}
+                        />
+                      </Campo>
+                      <Campo label="UF" erro={erros.uf}>
+                        <input
+                          value={enderecoManual.uf}
+                          onChange={(e) =>
+                            setEnderecoManual((prev) => ({
+                              ...prev,
+                              uf: e.target.value.toUpperCase().slice(0, 2),
+                            }))
+                          }
+                          maxLength={2}
+                          className={cn(inputClass, erros.uf && inputComErroClass)}
+                        />
+                      </Campo>
+                    </div>
+                  </>
+                )}
+
+                {enderecoEfetivo && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Número" erro={erros.numero}>
+                      <input
+                        value={numero}
+                        onChange={(e) => setNumero(e.target.value)}
+                        className={cn(inputClass, erros.numero && inputComErroClass)}
+                      />
+                    </Campo>
+                    <Campo label="Complemento (opcional)">
+                      <input
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
+                        className={inputClass}
+                      />
+                    </Campo>
+                  </div>
                 )}
               </div>
             </Etapa>

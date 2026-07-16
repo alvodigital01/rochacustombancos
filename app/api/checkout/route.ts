@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { supabaseServer } from "@/lib/supabase";
 import { calcularFrete } from "@/lib/frete";
 import { criarPreferencia } from "@/lib/mercadopago";
+import { validarCPF, validarEmail, validarTelefone } from "@/lib/validacao";
 
 export const runtime = "nodejs";
 
@@ -32,13 +33,17 @@ export async function POST(request: Request) {
     if (!body.itens || body.itens.length === 0) {
       return NextResponse.json({ erro: "Carrinho vazio." }, { status: 400 });
     }
-    if (
-      !body.cliente?.nome ||
-      !body.cliente?.email ||
-      !body.cliente?.cpf ||
-      !body.cliente?.telefone
-    ) {
-      return NextResponse.json({ erro: "Preencha todos os dados do cliente." }, { status: 400 });
+    if (!body.cliente?.nome?.trim()) {
+      return NextResponse.json({ erro: "Informe seu nome completo." }, { status: 400 });
+    }
+    if (!body.cliente?.email || !validarEmail(body.cliente.email)) {
+      return NextResponse.json({ erro: "E-mail inválido." }, { status: 400 });
+    }
+    if (!body.cliente?.cpf || !validarCPF(body.cliente.cpf)) {
+      return NextResponse.json({ erro: "CPF inválido." }, { status: 400 });
+    }
+    if (!body.cliente?.telefone || !validarTelefone(body.cliente.telefone)) {
+      return NextResponse.json({ erro: "Telefone inválido." }, { status: 400 });
     }
     if (!body.endereco?.cep || !body.endereco?.numero) {
       return NextResponse.json({ erro: "Endereço incompleto." }, { status: 400 });
