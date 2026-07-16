@@ -2,7 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase";
 import { formatarPreco } from "@/lib/format";
-import { marcarComoEnviado, marcarComoEntregue, marcarComoCancelado } from "./actions";
+import {
+  marcarComoEnviado,
+  marcarComoEntregue,
+  marcarComoCancelado,
+  marcarComoPagoManualmente,
+} from "./actions";
 import FormularioComConfirmacao from "@/components/admin/FormularioComConfirmacao";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +50,13 @@ async function getPedido(numero: string) {
 
 export default async function AdminPedidoDetalhePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ numero: string }>;
+  searchParams: Promise<{ erro?: string }>;
 }) {
   const { numero } = await params;
+  const { erro } = await searchParams;
   const dados = await getPedido(numero);
 
   if (!dados) notFound();
@@ -66,6 +74,29 @@ export default async function AdminPedidoDetalhePage({
         <p className="text-sm text-gray-400">
           Status atual: <span className="font-medium text-white">{pedido.status}</span>
         </p>
+
+        {erro && (
+          <p className="mt-4 rounded border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {erro}
+          </p>
+        )}
+
+        {pedido.status === "aguardando_pagamento" && (
+          <div className="mt-4">
+            <FormularioComConfirmacao
+              action={marcarComoPagoManualmente}
+              numero={pedido.numero}
+              mensagemConfirmacao="Confirma que esse pedido foi pago? Isso vai baixar o estoque dos itens."
+            >
+              <button
+                type="submit"
+                className="rounded bg-yellow-400 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
+              >
+                Marcar como pago manualmente
+              </button>
+            </FormularioComConfirmacao>
+          </div>
+        )}
 
         <section className="mt-6 rounded border border-white/10 bg-white/5 p-4">
           <h2 className="mb-4 font-semibold text-yellow-400">Cliente</h2>

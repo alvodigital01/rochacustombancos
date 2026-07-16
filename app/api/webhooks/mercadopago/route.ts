@@ -1,103 +1,93 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase";
 import { buscarPagamento } from "@/lib/mercadopago";
+import { confirmarPagamento, marcarPagamentoRecusado } from "@/lib/pedidos";
 
 export const runtime = "nodejs";
 
-// O Mercado Pago reenvia a notificação se não receber 200, então sempre
-// respondemos 200 (mesmo em erro tratado) e só logamos o problema.
+// "Recebido e processado" (ou intencionalmente ignorado) — o Mercado Pago
+// não reenvia.
 const OK = () => NextResponse.json({ recebido: true });
 
+// "Não consegui verificar/processar" — 500 faz o Mercado Pago reenviar
+// mais tarde, em vez de perdermos a notificação silenciosamente.
+const FALHA_TEMPORARIA = () =>
+  NextResponse.json({ recebido: false, erro: "Falha ao processar a notificação." }, { status: 500 });
+
 export async function POST(request: Request) {
+  const url = new URL(request.url);
+
+  let body: { type?: string; data?: { id?: string } } | null = null;
   try {
-    const url = new URL(request.url);
+    body = await request.json();
+  } catch {
+    body = null;
+  }
 
-    let body: { type?: string; data?: { id?: string } } | null = null;
-    try {
-      body = await request.json();
-    } catch {
-      body = null;
-    }
-
-    const tipo = body?.type ?? url.searchParams.get("type") ?? url.searchParams.get("topic");
-    if (tipo !== "payment") {
-      return OK();
-    }
-
-    const paymentId = body?.data?.id ?? url.searchParams.get("data.id") ?? url.searchParams.get("id");
-    if (!paymentId) {
-      return OK();
-    }
-
-    // SEGURANÇA: nunca confiar no status vindo no corpo da notificação —
-    // sempre reconsultar o pagamento direto na API do Mercado Pago.
-    const pagamento = await buscarPagamento(String(paymentId));
-    const status = pagamento.status;
-    const numero = pagamento.external_reference;
-
-    if (!numero) {
-      console.error("Webhook MP: pagamento sem external_reference", paymentId);
-      return OK();
-    }
-
-    const supabase = supabaseServer();
-
-    if (status === "approved") {
-      // Idempotência: só transiciona pedidos que ainda estão aguardando
-      // pagamento. Se o webhook chegar duplicado, a segunda chamada não
-      // afeta nenhuma linha e não decrementa estoque de novo.
-      const { data: pedidosAtualizados, error: erroUpdate } = await supabase
-        .from("pedidos")
-        .update({ status: "pago", mp_payment_id: String(paymentId), mp_status: status })
-        .eq("numero", numero)
-        .eq("status", "aguardando_pagamento")
-        .select("id");
-
-      if (erroUpdate) {
-        console.error("Webhook MP: erro ao atualizar pedido", erroUpdate);
-        return OK();
-      }
-
-      const pedidoConfirmadoAgora = pedidosAtualizados?.[0];
-
-      if (pedidoConfirmadoAgora) {
-        const { data: itens, error: erroItens } = await supabase
-          .from("pedido_itens")
-          .select("variante_id, qtd")
-          .eq("pedido_id", pedidoConfirmadoAgora.id);
-
-        if (erroItens) {
-          console.error("Webhook MP: erro ao buscar itens do pedido", erroItens);
-        }
-
-        for (const item of itens ?? []) {
-          const { error: erroEstoque } = await supabase.rpc("decrementar_estoque", {
-            p_variante_id: item.variante_id,
-            p_qtd: item.qtd,
-          });
-          if (erroEstoque) {
-            console.error("Webhook MP: erro ao decrementar estoque", erroEstoque);
-          }
-        }
-      }
-    } else if (status === "rejected" || status === "cancelled") {
-      const { error: erroUpdate } = await supabase
-        .from("pedidos")
-        .update({ mp_status: status, mp_payment_id: String(paymentId) })
-        .eq("numero", numero);
-
-      if (erroUpdate) {
-        console.error("Webhook MP: erro ao registrar status de recusa/cancelamento", erroUpdate);
-      }
-    }
-
-    // TODO opcional: validar a assinatura x-signature do Mercado Pago para
-    // hardening extra (a re-consulta do pagamento acima já previne
-    // falsificação de status).
-
-    return OK();
-  } catch (erro) {
-    console.error("Webhook MP: erro inesperado", erro);
+  const tipo = body?.type ?? url.searchParams.get("type") ?? url.searchParams.get("topic");
+  if (tipo !== "payment") {
     return OK();
   }
+
+  const paymentId = body?.data?.id ?? url.searchParams.get("data.id") ?? url.searchParams.get("id");
+  if (!paymentId) {
+    return OK();
+  }
+
+  // SEGURANÇA: nunca confiar no status vindo no corpo da notificação —
+  // sempre reconsultar o pagamento direto na API do Mercado Pago. Se essa
+  // consulta falhar (rede/timeout/instabilidade), não temos como saber o
+  // status real: respondemos 500 pra o Mercado Pago tentar de novo, em vez
+  // de arriscar perder a confirmação.
+  let pagamento;
+  try {
+    pagamento = await buscarPagamento(String(paymentId));
+  } catch (erro) {
+    console.error("Webhook MP: falha ao consultar pagamento na API do Mercado Pago", erro);
+    return FALHA_TEMPORARIA();
+  }
+
+  const status = pagamento.status;
+  const numero = pagamento.external_reference;
+
+  if (!numero) {
+    // Consultamos com sucesso, só não há pedido nosso associado — reenviar
+    // não muda esse fato, então não é um caso de falha temporária.
+    console.error("Webhook MP: pagamento sem external_reference", paymentId);
+    return OK();
+  }
+
+  try {
+    if (status === "approved") {
+      const resultado = await confirmarPagamento({
+        numero,
+        mpPaymentId: String(paymentId),
+        mpStatus: status,
+      });
+
+      if (!resultado.sucesso) {
+        console.error("Webhook MP: erro ao confirmar pagamento", resultado.erro);
+        return FALHA_TEMPORARIA();
+      }
+    } else if (status === "rejected" || status === "cancelled") {
+      const resultado = await marcarPagamentoRecusado({
+        numero,
+        mpPaymentId: String(paymentId),
+        mpStatus: status,
+      });
+
+      if (!resultado.sucesso) {
+        console.error("Webhook MP: erro ao registrar recusa/cancelamento", resultado.erro);
+        return FALHA_TEMPORARIA();
+      }
+    }
+  } catch (erro) {
+    console.error("Webhook MP: erro inesperado ao processar pagamento", erro);
+    return FALHA_TEMPORARIA();
+  }
+
+  // TODO opcional: validar a assinatura x-signature do Mercado Pago para
+  // hardening extra (a re-consulta do pagamento acima já previne
+  // falsificação de status).
+
+  return OK();
 }

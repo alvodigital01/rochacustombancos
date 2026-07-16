@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CheckCircle2, Clock, PackageCheck, Truck, XCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -18,6 +19,11 @@ const STATUS_CONFIG: Record<
     Icone: CheckCircle2,
     className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
   },
+  pagamento_recusado: {
+    mensagem: "Seu pagamento não foi aprovado.",
+    Icone: XCircle,
+    className: "border-danger/30 bg-danger/10 text-danger",
+  },
   enviado: {
     mensagem: "Seu pedido foi enviado!",
     Icone: Truck,
@@ -33,11 +39,6 @@ const STATUS_CONFIG: Record<
     Icone: XCircle,
     className: "border-danger/30 bg-danger/10 text-danger",
   },
-  rejected: {
-    mensagem: "O pagamento não foi aprovado. Tente novamente ou entre em contato.",
-    Icone: XCircle,
-    className: "border-danger/30 bg-danger/10 text-danger",
-  },
 };
 
 export default function StatusPedido({
@@ -50,6 +51,9 @@ export default function StatusPedido({
   const [status, setStatus] = useState(statusInicial);
 
   useEffect(() => {
+    // Já para pra qualquer status diferente de "aguardando_pagamento" —
+    // incluindo "pago" e "pagamento_recusado", que é tudo que precisamos
+    // aqui, já que nenhum outro status volta a mudar sozinho.
     if (status !== "aguardando_pagamento") return;
 
     const intervalo = setInterval(() => {
@@ -76,11 +80,22 @@ export default function StatusPedido({
   const Icone = config.Icone;
 
   return (
-    <div className={cn("mt-4 flex items-center gap-3 rounded-2xl border p-4", config.className)}>
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-bg/40">
-        <Icone className="h-5 w-5" aria-hidden />
+    <div className={cn("mt-4 rounded-2xl border p-4", config.className)}>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-bg/40">
+          <Icone className="h-5 w-5" aria-hidden />
+        </div>
+        <p className="font-medium">{config.mensagem}</p>
       </div>
-      <p className="font-medium">{config.mensagem}</p>
+
+      {status === "pagamento_recusado" && (
+        <Link
+          href="/carrinho"
+          className="mt-3 inline-flex items-center gap-1 rounded font-display text-sm font-semibold uppercase tracking-wide text-accent underline-offset-4 transition hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        >
+          Tentar novamente
+        </Link>
+      )}
     </div>
   );
 }

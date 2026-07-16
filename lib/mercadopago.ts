@@ -81,5 +81,8 @@ export async function criarPreferencia({
 }
 
 export async function buscarPagamento(paymentId: string) {
-  return new Payment(mercadoPagoClient).get({ id: paymentId });
+  return new Payment(mercadoPagoClient).get({
+    id: paymentId,
+    requestOptions: { timeout: 8000 },
+  });
 }
